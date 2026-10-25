@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live ESG Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+            background: #1e1e1e; 
+            color: #ffffff; 
+            padding: 2rem; 
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            background: #2d2d2d; 
+            padding: 2rem; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        h2 { margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 1rem; }
+        canvas { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Live ESG Portfolio Metrics</h2>
+        <canvas id="esgChart"></canvas>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('esgChart').getContext('2d');
+        const esgChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: [], 
+                datasets: [
+                    { label: 'Environmental', backgroundColor: '#4CAF50', data: [] },
+                    { label: 'Social', backgroundColor: '#2196F3', data: [] },
+                    { label: 'Governance', backgroundColor: '#FFC107', data: [] }
+                ]
+            },
+            options: {
+                responsive: true,
+                animation: { duration: 0 }, // Disabled to prevent flickering on live polling
+                scales: { 
+                    y: { 
+                        min: 0, 
+                        max: 100,
+                        grid: { color: '#444' },
+                        ticks: { color: '#aaa' }
+                    },
+                    x: {
+                        grid: { color: '#444' },
+                        ticks: { color: '#aaa', font: { weight: 'bold' } }
+                    }
+                },
+                plugins: {
+                    legend: { labels: { color: '#fff' } }
+                }
+            }
+        });
+
+        async function updateDashboard() {
+            try {
+                // Fetch the full historical array from your REST controller
+                const response = await fetch('/api/esg/metrics');
+                const data = await response.json();
+
+                // Isolate the single most recent entry for each ticker
+                const latestData = {};
+                data.forEach(metric => {
+                    latestData[metric.ticker] = metric;
+                });
+
+                // Map the extracted data to the chart datasets
+                const tickers = Object.keys(latestData);
+                esgChart.data.labels = tickers;
+                esgChart.data.datasets[0].data = tickers.map(t => latestData[t].environmentalScore);
+                esgChart.data.datasets[1].data = tickers.map(t => latestData[t].socialScore);
+                esgChart.data.datasets[2].data = tickers.map(t => latestData[t].governanceScore);
+                
+                esgChart.update();
+            } catch (error) {
+                console.error("Failed to fetch ESG metrics:", error);
+            }
+        }
+
+        // Run immediately on load, then poll every 2 seconds matching the producer schedule
+        updateDashboard();
+        setInterval(updateDashboard, 2000);
+    </script>
+</body>
+</html>

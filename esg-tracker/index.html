@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quant ESG Terminal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 p-8 font-sans">
+    <div class="max-w-5xl mx-auto">
+        <header class="mb-8 border-b border-slate-800 pb-4 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-bold tracking-tight text-sky-400">NSE ESG Risk Terminal</h1>
+                <p class="text-slate-400 text-sm mt-1">Live data stream connected via Spring Boot, Kafka, & PostgreSQL</p>
+            </div>
+            <div class="flex items-center gap-4">
+                <a href="http://localhost:8080/api/esg/export" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-sky-500/10 text-sky-400 border border-sky-500/20 hover:bg-sky-500/20 transition">Export CSV</a>
+                <span id="status-badge" class="px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">Connecting...</span>
+            </div>
+        </header>
+
+        <div id="grid-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <!-- Dynamic Cards Populated Here -->
+        </div>
+    </div>
+
+    <script>
+        async function fetchMetrics() {
+            const badge = document.getElementById('status-badge');
+            try {
+                const response = await fetch('http://localhost:8080/api/esg/metrics');
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
+                
+                badge.textContent = "Live Stream Active";
+                badge.className = "px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+
+                const container = document.getElementById('grid-container');
+                container.innerHTML = '';
+                
+                const latestMap = {};
+                data.forEach(item => { latestMap[item.ticker] = item; });
+
+                Object.values(latestMap).forEach(item => {
+                    container.innerHTML += `
+                        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg hover:border-slate-700 transition">
+                            <div class="flex justify-between items-center mb-4">
+                                <span class="text-lg font-bold text-sky-300">${item.ticker}</span>
+                                <span class="text-xs text-slate-500">ID: ${item.id}</span>
+                            </div>
+                            <div class="space-y-2 text-sm">
+                                <div class="flex justify-between bg-slate-950/50 p-2 rounded">
+                                    <span class="text-slate-400">Environment</span>
+                                    <span class="font-mono font-semibold text-emerald-400">${item.environmentalScore.toFixed(2)}</span>
+                                </div>
+                                <div class="flex justify-between bg-slate-950/50 p-2 rounded">
+                                    <span class="text-slate-400">Social</span>
+                                    <span class="font-mono font-semibold text-sky-400">${item.socialScore.toFixed(2)}</span>
+                                </div>
+                                <div class="flex justify-between bg-slate-950/50 p-2 rounded">
+                                    <span class="text-slate-400">Governance</span>
+                                    <span class="font-mono font-semibold text-indigo-400">${item.governanceScore.toFixed(2)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+            } catch (error) {
+                badge.textContent = "Backend Offline / CORS Blocked";
+                badge.className = "px-3 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20";
+            }
+        }
+
+        fetchMetrics();
+        setInterval(fetchMetrics, 3000);
+    </script>
+</body>
+</html>
